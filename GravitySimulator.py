@@ -36,7 +36,7 @@ class Simulator:
         massText.bind("<")
 
 
-
+#i was testing
 
 
 if __name__ == "__main__": 
