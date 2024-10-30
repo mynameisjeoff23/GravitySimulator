@@ -1,4 +1,6 @@
 from tkinter import *
+from time import time
+from random import randint
 
 
 def isfloat(num) -> bool:
@@ -7,10 +9,8 @@ def isfloat(num) -> bool:
         return True
     except ValueError:
         return False
+    
 
-class Mass:
-    def __init__(self, mass:int) -> None:
-        pass
 
 class Simulator:
     def __init__(self) -> None:
@@ -52,6 +52,27 @@ class Simulator:
             self.popup.destroy()
             self.masses.append(Mass(self.mass))
 
+
+
+class Mass:
+    def __init__(self, mass:int, main:Simulator) -> None:
+        x = main.canvas.winfo_width/2
+        y = main.canvas.winfo_height/2
+        self.main = main
+        self.mass = mass
+        self.x = x + randint(50 - x, x - 50)
+        self.y = y + randint(50 - y, y - 50)
+        self.lastTime = time()
+
+    def AccelerationG(self) -> None:
+        notPast = True
+        for x in self.main.masses:
+            if notPast and self is x:
+                notPast = False
+                continue
+            else: 
+                pass # Thats math I haven't worked out yet
+            
 
 
 if __name__ == "__main__": 
