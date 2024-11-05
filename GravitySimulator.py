@@ -45,29 +45,36 @@ class Simulator:
         self.massText.pack() #TODO: change the packs into grids
         done.pack()
 
-    def closeAddMass(self, optionalVariableWhichForSomeReasonIDKIsPassed=None) -> None: # I don't know what the second positional argument does
-                                                                                        # Other than calm down exception warnings
+    def closeAddMass(self, canUsebutIDKWhatItDoes=None) -> None:# I don't know what the second argument does
+                                                                # Other than prevent an exception
         if isfloat(x := self.massText.get()):
             self.mass = float(x)
             self.popup.destroy()
-            self.masses.append(Mass(self.mass))
+            self.masses.append(Mass(self.mass, self))
+            self.mass = 0
+
+            for i in self.masses:
+                i.calculateAG()
 
 
 
 class Mass:
-    def __init__(self, mass:int, main:Simulator) -> None:
-        x = main.canvas.winfo_width/2
-        y = main.canvas.winfo_height/2
+    def __init__(self, mass:int, main:Simulator, size=50) -> None:
+        x = int(main.canvas.winfo_screenwidth()/2)
+        y = int(main.canvas.winfo_screenheight()/2)
         self.main = main
         self.mass = mass
+        self.size = size
+        print(f"x: {x} y: {y}")
         self.x = x + randint(50 - x, x - 50)
         self.y = y + randint(50 - y, y - 50)
         self.lastTime = time()
 
-    def AccelerationG(self) -> None:
+    def calculateAG(self) -> None:
         notPast = True
         for x in self.main.masses:
-            if notPast and self is x:
+            print(f"self is x: {self is x}")
+            if notPast and self is x: #made confusing for short circuit
                 notPast = False
                 continue
             else: 
