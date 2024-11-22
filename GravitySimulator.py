@@ -32,6 +32,11 @@ class Simulator:
         self.addMassButton = Button(self.canvas, text="+", command=self.addMass)
         self.addMassButton.pack()
 
+        self.playButton = Button(self.canvas, text='►', command=self.playHandler)
+        self.playButton.pack()
+
+        self.play = False
+
         self.root.mainloop()
     
     def addMass(self) -> None:
@@ -58,6 +63,23 @@ class Simulator:
             for i in self.masses:
                 i.updateAG()
 
+    def playHandler(self) -> None: 
+        pass
+        if self.play:
+            self.play = False
+            self.playButton.configure(text='►')
+
+        else:
+            self.lastTime = time()
+            self.play = True
+            self.playButton.configure(text="  ▌▌")
+            self.canvas.after(16, self.updateCallback)      
+
+    def updateCallback(self) -> None: 
+        pass
+        if self.play:
+            self.canvas.after(16, self.updateCallback)
+
 
 
 class Mass:
@@ -68,7 +90,7 @@ class Mass:
         self.mass = main.mass
         self.size = 125 - 100/( 1 + 0.0001 * self.mass) # spooky magic numbers
         print(f"x: {x} y: {y}")
-        self.x = x + randint(50 - x, x - 50)
+        self.x = x + randint(50 - x, x - 50) #temporaritly random
         self.y = y + randint(50 - y, y - 50)
         # self.lastTime = time()
         self.vi = vi
