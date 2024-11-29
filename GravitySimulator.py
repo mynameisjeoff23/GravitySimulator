@@ -28,11 +28,12 @@ class Simulator:
         self.canvas.pack(side=RIGHT, fill=BOTH, expand=True)
 
         self.masses = []
+        self.massCount = 0
 
         self.addMassButton = Button(self.canvas, text="+", command=self.addMass)
         self.addMassButton.pack()
 
-        self.playButton = Button(self.canvas, text='►', command=self.playHandler)
+        self.playButton = Button(self.canvas, text='  ▶ ', command=self.playHandler)
         self.playButton.pack()
 
         self.play = False
@@ -47,7 +48,8 @@ class Simulator:
         done = Button(self.popup, text="Done", command=self.closeAddMass)
 
         self.massText = Entry(self.popup)
-        self.massText.bind("<Enter>", self.closeAddMass)
+
+        self.popup.bind("<Return>", self.closeAddMass)
 
         self.massText.pack() #TODO: change the packs into grids
         done.pack()
@@ -58,16 +60,16 @@ class Simulator:
             self.mass = float(x)
             self.popup.destroy()
             self.masses.append(Mass(self))
+            self.updateMassCount()
             self.mass = 0
 
-            for i in self.masses:
-                i.updateAG()
+    def updateMassCount(self) -> None:
+        self.massCount = len(self.masses)
 
     def playHandler(self) -> None: 
-        pass
         if self.play:
             self.play = False
-            self.playButton.configure(text='►')
+            self.playButton.configure(text='  ▶ ')
 
         else:
             self.lastTime = time()
@@ -76,9 +78,18 @@ class Simulator:
             self.canvas.after(16, self.updateCallback)      
 
     def updateCallback(self) -> None: 
-        pass
         if self.play:
+            self.currentTime = time()
+            self.deltaT = self.currentTime - self.lastTime
+            for x in self.masses:
+                x.updatePos()
+            self.lastTime = self.currentTime
             self.canvas.after(16, self.updateCallback)
+
+    def updateVisuals(self) -> None:
+        for x in self.masses:
+            self.canvas.itemconfigure(x.visualId)
+        #TODO: add another after(), fix after() in updateCallBack()
 
 
 
@@ -88,19 +99,20 @@ class Mass:
         y = int(main.canvas.winfo_screenheight()/2)
         self.main = main
         self.mass = main.mass
-        self.size = 125 - 100/( 1 + 0.0001 * self.mass) # spooky magic numbers
-        print(f"x: {x} y: {y}")
+        self.size = 125 - 100/( 1 + 0.0001 * self.mass) # magic number
         self.x = x + randint(50 - x, x - 50) #temporaritly random
         self.y = y + randint(50 - y, y - 50)
-        # self.lastTime = time()
+        print(f"x: {self.x} y: {self.y}")
+        self.vf = vi
         self.vi = vi
-        self.AG = [0.0, 0.0]    # Acceleration due to gravity in (AGx, AGy) format
-        self.updateAG(startup=True)
+        self.AG = [0.0, 0.0] # Acceleration due to gravity in (AGx, AGy) format
 
         # graphical stuff
-        self.visual = self.main.canvas.create_oval(self.x - self.size, self.y - self.size, self.x + self.size, self.y + self.size)
-
-    def updateAG(self, startup:bool=False) -> None:
+        self.visualId = self.main.canvas.create_oval(self.x - self.size, self.y - self.size, \
+                                                     self.x + self.size, self.y + self.size, \
+                                                     activefill="black", activeoutline="black")
+        print("should have posted a circle")
+    def updatePos(self) -> None:
         notPast = True
         for x in self.main.masses:
             print(f"self is x: {self is x}")
@@ -112,18 +124,13 @@ class Mass:
                 deltaY = x.y - self.y
                 theta = math.atan2(deltaY, deltaX) # still dont know if this works but i guess well find out
                 r = math.sqrt(deltaX*deltaX + deltaY*deltaY)
-                A = G * self.mass * x.mass / (r*r)
-                self.AG[0] += A * math.cos(theta)
-                self.AG[1] += A * math.sin(theta)
+                a = G * self.mass * x.mass / (r*r)
+                self.AG[0] = a * math.cos(theta)
+                self.AG[1] = a * math.sin(theta)
 
-        if startup: return
-        else:   # calculate velocity and new position
-                # can't really do anything here until a  
-                # play button and handler are added
-            pass
-            # currentTime = time()
-            # deltaT = currentTime - self.lastTime
-            # vf = vi + at
+                self.x = self.x + self.vi[0] * self.main.deltaT + 0.5 * self.AG[0] * self.main.deltaT * self.main.deltaT
+                self.y = self.y + self.vi[1] * self.main.deltaT + 0.5 * self.AG[1] * self.main.deltaT * self.main.deltaT
+
             
 
 
