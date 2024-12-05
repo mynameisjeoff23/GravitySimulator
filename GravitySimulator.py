@@ -2,6 +2,10 @@ from tkinter import *
 from time import time
 from random import randint
 import math
+import ctypes
+
+try: ctypes.windll.shcore.SetProcessDpiAwareness(1)
+except: print("there was an exception trying to set dpi awareness")
 
 G = 6.674215e-11
 
@@ -20,16 +24,21 @@ class Simulator:
         self.root = Tk()
         self.root.title("Gravity Simulator")
         self.root.state("zoomed")
+        self.root.tk.call('tk', 'scaling', 1.0)  # Disable scaling
 
-        self.frame = Frame(self.root)
-        self.frame.pack()
+
+        self.frame = Frame(self.root, width=self.root.winfo_screenwidth(), height=self.root.winfo_screenheight())
+        self.frame.pack(fill=BOTH, expand=True)
+
+        
 
         self.canvas = Canvas(self.frame)
-        self.canvas.pack(side=RIGHT, fill=BOTH, expand=True)
+        self.canvas.pack(fill=BOTH, expand=True)
 
         self.masses = []
         self.massCount = 0
 
+        #TODO: take buttons out of the canvas
         self.addMassButton = Button(self.canvas, text="+", command=self.addMass)
         self.addMassButton.pack()
 
@@ -94,24 +103,26 @@ class Simulator:
 
 
 class Mass:
-    def __init__(self, main:Simulator, vi:list=[0,0]) -> None:
-        x = int(main.canvas.winfo_screenwidth()/2)
+    def __init__(self, main:Simulator, vi:list=[0.0, 0.0]) -> None:
+        x = int(main.canvas.winfo_screenwidth()/2) #TODO: move this shit into the simulator
         y = int(main.canvas.winfo_screenheight()/2)
         self.main = main
         self.mass = main.mass
         self.size = 125 - 100/( 1 + 0.0001 * self.mass) # magic number
         self.x = x + randint(50 - x, x - 50) #temporaritly random
         self.y = y + randint(50 - y, y - 50)
-        print(f"x: {self.x} y: {self.y}")
-        self.vf = vi
+        print(f"x: {self.x} y: {self.y}\nsize: {self.size}\n{x}x{y}")
+        self.deltaV = [0.0, 0.0]
         self.vi = vi
         self.AG = [0.0, 0.0] # Acceleration due to gravity in (AGx, AGy) format
 
         # graphical stuff
         self.visualId = self.main.canvas.create_oval(self.x - self.size, self.y - self.size, \
                                                      self.x + self.size, self.y + self.size, \
-                                                     activefill="black", activeoutline="black")
+                                                     fill="black", outline="black")
         print("should have posted a circle")
+
+        
     def updatePos(self) -> None:
         notPast = True
         for x in self.main.masses:
@@ -122,14 +133,24 @@ class Mass:
             else:   #calculate acceleration to another body
                 deltaX = x.x - self.x
                 deltaY = x.y - self.y
-                theta = math.atan2(deltaY, deltaX) # still dont know if this works but i guess well find out
+                theta = math.atan2(deltaY, deltaX) # still dont know if this works but i guess we'll find out
                 r = math.sqrt(deltaX*deltaX + deltaY*deltaY)
                 a = G * self.mass * x.mass / (r*r)
                 self.AG[0] = a * math.cos(theta)
                 self.AG[1] = a * math.sin(theta)
 
-                self.x = self.x + self.vi[0] * self.main.deltaT + 0.5 * self.AG[0] * self.main.deltaT * self.main.deltaT
-                self.y = self.y + self.vi[1] * self.main.deltaT + 0.5 * self.AG[1] * self.main.deltaT * self.main.deltaT
+                self.deltaV[0] = self.AG[0] * self.main.deltaT
+                self.deltaV[1] = self.AG[1] * self.main.deltaT
+
+                # xf = xi + vi + 1/2at^2
+                # TODO: this might need to change to be reliant on vf = vi + at
+                # I mean should produce same result, but at least test if v is the same
+                self.x += self.vi[0] * self.main.deltaT + 0.5 * self.deltaV[0] * self.main.deltaT
+                self.y += self.vi[1] * self.main.deltaT + 0.5 * self.deltaV[1] * self.main.deltaT
+
+                # vf = vi + at
+                self.vi[0] += self.deltaV[0]
+                self.vi[1] += self.deltaV[1]
 
             
 
