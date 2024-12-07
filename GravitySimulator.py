@@ -5,9 +5,11 @@ import math
 import ctypes
 
 try: ctypes.windll.shcore.SetProcessDpiAwareness(1)
+
 except: print("there was an exception trying to set dpi awareness")
 
 G = 6.674215e-11
+timeMultiplier = 100000
 
 def isfloat(num) -> bool:
     try:
@@ -23,14 +25,12 @@ class Simulator:
 
         self.root = Tk()
         self.root.title("Gravity Simulator")
-        self.root.state("zoomed")
         self.root.tk.call('tk', 'scaling', 1.0)  # Disable scaling
-
-
+        self.root.state("zoomed")
+        self.root.update_idletasks()
+        
         self.frame = Frame(self.root, width=self.root.winfo_screenwidth(), height=self.root.winfo_screenheight())
         self.frame.pack(fill=BOTH, expand=True)
-
-        
 
         self.canvas = Canvas(self.frame)
         self.canvas.pack(fill=BOTH, expand=True)
@@ -84,21 +84,25 @@ class Simulator:
             self.lastTime = time()
             self.play = True
             self.playButton.configure(text="  ▌▌")
-            self.canvas.after(16, self.updateCallback)      
+            self.canvas.after(16, self.updateCallback)    
+            self.canvas.after(16, self.updateVisuals)  
 
     def updateCallback(self) -> None: 
         if self.play:
             self.currentTime = time()
-            self.deltaT = self.currentTime - self.lastTime
+            self.deltaT = (self.currentTime - self.lastTime)*timeMultiplier
             for x in self.masses:
                 x.updatePos()
             self.lastTime = self.currentTime
             self.canvas.after(16, self.updateCallback)
 
     def updateVisuals(self) -> None:
-        for x in self.masses:
-            self.canvas.itemconfigure(x.visualId)
-        #TODO: add another after(), fix after() in updateCallBack()
+        if self.play:
+            for x in self.masses:
+                self.canvas.coords(x.visualId, x.x - x.size, x.y - x.size, x.x + x.size, x.y + x.size)
+
+        self.canvas.after(16, self.updateVisuals)
+        #TODO: add another after(), fix after() call in updateCallBack()
 
 
 
@@ -126,16 +130,17 @@ class Mass:
     def updatePos(self) -> None:
         notPast = True
         for x in self.main.masses:
-            print(f"self is x: {self is x}")
             if notPast and self is x: #made confusing for short circuit
                 notPast = False #skips calculating gravity when self is x
-                continue
+                continue # also skips checking if self is x if notPast == False
             else:   #calculate acceleration to another body
                 deltaX = x.x - self.x
                 deltaY = x.y - self.y
                 theta = math.atan2(deltaY, deltaX) # still dont know if this works but i guess we'll find out
                 r = math.sqrt(deltaX*deltaX + deltaY*deltaY)
                 a = G * self.mass * x.mass / (r*r)
+                if not(int(time())%10):
+                    print(f"mass: {self.mass}\ta: {a}\tx: {self.x}\ty: {self.y}")
                 self.AG[0] = a * math.cos(theta)
                 self.AG[1] = a * math.sin(theta)
 
