@@ -9,7 +9,7 @@ try: ctypes.windll.shcore.SetProcessDpiAwareness(1)
 except: print("there was an exception trying to set dpi awareness")
 
 G = 6.674215e-11
-timeMultiplier = 100000
+timeMultiplier = 1000
 
 def isfloat(num) -> bool:
     try:
@@ -53,6 +53,7 @@ class Simulator:
         self.popup = Toplevel(self.canvas)
         self.popup.title("Select Mass Dimensions")
         self.popup.geometry("200x100")
+        # TODO: make pupup appear at the center 
 
         done = Button(self.popup, text="Done", command=self.closeAddMass)
 
@@ -62,6 +63,8 @@ class Simulator:
 
         self.massText.pack() #TODO: change the packs into grids
         done.pack()
+        self.popup.focus_force()
+        self.massText.focus_set()
 
     def closeAddMass(self, canUsebutIDKWhatItDoes=None) -> None:# I don't know what the second argument does
                                                                 # Other than prevent an exception
@@ -129,6 +132,9 @@ class Mass:
         
     def updatePos(self) -> None:
         notPast = True
+        self.AG[0] = 0.0
+        self.AG[1] = 0.0
+
         for x in self.main.masses:
             if notPast and self is x: #made confusing for short circuit
                 notPast = False #skips calculating gravity when self is x
@@ -138,24 +144,25 @@ class Mass:
                 deltaY = x.y - self.y
                 theta = math.atan2(deltaY, deltaX) # still dont know if this works but i guess we'll find out
                 r = math.sqrt(deltaX*deltaX + deltaY*deltaY)
-                a = G * self.mass * x.mass / (r*r)
+                # (GMm/r^2) * 1/m, m being self.mass
+                a = G * x.mass / (r*r)
                 if not(int(time())%10):
-                    print(f"mass: {self.mass}\ta: {a}\tx: {self.x}\ty: {self.y}")
-                self.AG[0] = a * math.cos(theta)
-                self.AG[1] = a * math.sin(theta)
+                    print(f"mass: {self.mass}\ta: {self.AG[0]:.8f}, {self.AG[1]:.8f}\tv: {self.vi[0]:.8f}, {self.vi[1]:.8f}\tpos: ({self.x:.8f}, {self.y:.8f})")
+                self.AG[0] += a * math.cos(theta)
+                self.AG[1] += a * math.sin(theta)
 
-                self.deltaV[0] = self.AG[0] * self.main.deltaT
-                self.deltaV[1] = self.AG[1] * self.main.deltaT
+        self.deltaV[0] = self.AG[0] * self.main.deltaT
+        self.deltaV[1] = self.AG[1] * self.main.deltaT
 
-                # xf = xi + vi + 1/2at^2
-                # TODO: this might need to change to be reliant on vf = vi + at
-                # I mean should produce same result, but at least test if v is the same
-                self.x += self.vi[0] * self.main.deltaT + 0.5 * self.deltaV[0] * self.main.deltaT
-                self.y += self.vi[1] * self.main.deltaT + 0.5 * self.deltaV[1] * self.main.deltaT
+        # xf = xi + vi + 1/2at^2
+        # TODO: this might need to change to be reliant on vf = vi + at
+        # I mean should produce same result, but at least test if v is the same
+        self.x += self.vi[0] * self.main.deltaT + 0.5 * self.deltaV[0] * self.main.deltaT
+        self.y += self.vi[1] * self.main.deltaT + 0.5 * self.deltaV[1] * self.main.deltaT
 
-                # vf = vi + at
-                self.vi[0] += self.deltaV[0]
-                self.vi[1] += self.deltaV[1]
+        # vf = vi + at
+        self.vi[0] += self.deltaV[0]
+        self.vi[1] += self.deltaV[1]
 
             
 
