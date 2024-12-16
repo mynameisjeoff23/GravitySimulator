@@ -9,7 +9,7 @@ try: ctypes.windll.shcore.SetProcessDpiAwareness(1)
 except: print("there was an exception trying to set dpi awareness")
 
 G = 6.674215e-11
-timeMultiplier = 1000
+timeMultiplier = 1
 
 def isfloat(num) -> bool:
     try:
@@ -93,7 +93,9 @@ class Simulator:
     def updateCallback(self) -> None: 
         if self.play:
             self.currentTime = time()
-            self.deltaT = (self.currentTime - self.lastTime)*timeMultiplier
+            self.deltaT = (self.currentTime - self.lastTime) * timeMultiplier
+            for x in self.masses:
+                x.updateAG()
             for x in self.masses:
                 x.updatePos()
             self.lastTime = self.currentTime
@@ -130,7 +132,7 @@ class Mass:
         print("should have posted a circle")
 
         
-    def updatePos(self) -> None:
+    def updateAG(self) -> None:
         notPast = True
         self.AG[0] = 0.0
         self.AG[1] = 0.0
@@ -142,14 +144,27 @@ class Mass:
             else:   #calculate acceleration to another body
                 deltaX = x.x - self.x
                 deltaY = x.y - self.y
-                theta = math.atan2(deltaY, deltaX) # still dont know if this works but i guess we'll find out
+                theta = abs(math.atan(deltaY / deltaX))  # still dont know if this works but i guess we'll find out
+                
+                if deltaX < 0: xDir = -1
+                elif deltaX > 0: xDir = 1
+                else: xDir = 0
+
+                if deltaY < 0: yDir = -1
+                elif deltaY > 0: yDir = 1
+                else: yDir = 0 
+
                 r = math.sqrt(deltaX*deltaX + deltaY*deltaY)
                 # (GMm/r^2) * 1/m, m being self.mass
                 a = G * x.mass / (r*r)
-                if not(int(time())%10):
-                    print(f"mass: {self.mass}\ta: {self.AG[0]:.8f}, {self.AG[1]:.8f}\tv: {self.vi[0]:.8f}, {self.vi[1]:.8f}\tpos: ({self.x:.8f}, {self.y:.8f})")
-                self.AG[0] += a * math.cos(theta)
-                self.AG[1] += a * math.sin(theta)
+                
+                self.AG[0] += a * math.cos(theta) * xDir
+                self.AG[1] += a * math.sin(theta) * yDir
+        if not(int(time())%10):
+            print(f"mass: {self.mass}\ta: {self.AG[0]:.8f}, {self.AG[1]:.8f}\tv: {self.vi[0]:.8f}, {self.vi[1]:.8f}\tpos: ({self.x:.8f}, {self.y:.8f})")
+            print(f"deltaxy: ({deltaX:.8f}, {deltaY:.8f})\ttheta: {theta*180/math.pi:.8f}°\tr: {r}\tdir: ({xDir}, {yDir})")
+    
+    def updatePos(self):
 
         self.deltaV[0] = self.AG[0] * self.main.deltaT
         self.deltaV[1] = self.AG[1] * self.main.deltaT
