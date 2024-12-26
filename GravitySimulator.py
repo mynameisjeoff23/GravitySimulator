@@ -113,7 +113,7 @@ class Simulator:
 
 
 class Mass:
-    def __init__(self, main:Simulator, vi:list=[0.0, 0.0]) -> None:
+    def __init__(self, main:Simulator, vi:list=None) -> None:
         x = int(main.canvas.winfo_screenwidth()/2) #TODO: move this shit into the simulator
         y = int(main.canvas.winfo_screenheight()/2)
         self.main = main
@@ -123,7 +123,9 @@ class Mass:
         self.y = y + randint(50 - y, y - 50)
         print(f"x: {self.x} y: {self.y}\nsize: {self.size}\n{x}x{y}")
         self.deltaV = [0.0, 0.0]
-        self.vi = vi
+        if vi == None:
+            self.vi = [0.0, 0.0]
+        else: self.vi = vi
         self.AG = [0.0, 0.0] # Acceleration due to gravity in (AGx, AGy) format
 
         # graphical stuff
