@@ -147,6 +147,13 @@ class Mass:
             else:   #calculate acceleration to another body
                 deltaX = i.x - self.x
                 deltaY = i.y - self.y
+                r = math.sqrt(deltaX*deltaX + deltaY*deltaY)
+
+                if r < (self.size + i.size):
+                    self.vi = [0.0, 0.0]    # TODO: handle collisions               
+                    self.AG = [0.0, 0.0]
+                    return               
+
                 theta = abs(math.atan(deltaY / deltaX))  # still dont know if this works but i guess we'll find out
                 
                 if deltaX < 0: xDir = -1
@@ -157,7 +164,6 @@ class Mass:
                 elif deltaY > 0: yDir = 1
                 else: yDir = 0 
 
-                r = math.sqrt(deltaX*deltaX + deltaY*deltaY)
                 # (GMm/r^2) * 1/m, m being self.mass
                 a = GRAVTIATIONAL_CONSTANT * i.mass / (r*r)
                 
