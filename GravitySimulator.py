@@ -8,7 +8,7 @@ try: ctypes.windll.shcore.SetProcessDpiAwareness(1)
 
 except: print("there was an exception trying to set dpi awareness")
 
-G = 6.674215e-11
+GRAVTIATIONAL_CONSTANT = 6.674215e-11
 timeMultiplier = 1
 
 def isfloat(num) -> bool:
@@ -92,13 +92,14 @@ class Simulator:
 
     def updateCallback(self) -> None: 
         if self.play:
-            self.currentTime = time()
-            self.deltaT = (self.currentTime - self.lastTime) * timeMultiplier
+            #self.currentTime = time()
+            #self.deltaT = (self.currentTime - self.lastTime) * timeMultiplier
+            self.deltaT = 0.01694915254237288 * timeMultiplier #TODO: uncomment when done debugging
             for x in self.masses:
                 x.updateAG()
             for x in self.masses:
                 x.updatePos()
-            self.lastTime = self.currentTime
+            #self.lastTime = self.currentTime
             self.canvas.after(16, self.updateCallback)
 
     def updateVisuals(self) -> None:
@@ -106,7 +107,7 @@ class Simulator:
             for x in self.masses:
                 self.canvas.coords(x.visualId, x.x - x.size, x.y - x.size, x.x + x.size, x.y + x.size)
 
-        self.canvas.after(16, self.updateVisuals)
+            self.canvas.after(16, self.updateVisuals)
         #TODO: add another after(), fix after() call in updateCallBack()
 
 
@@ -137,13 +138,13 @@ class Mass:
         self.AG[0] = 0.0
         self.AG[1] = 0.0
 
-        for x in self.main.masses:
-            if notPast and self is x: #made confusing for short circuit
+        for i in self.main.masses:
+            if notPast and self is i: #made confusing for short circuit
                 notPast = False #skips calculating gravity when self is x
                 continue # also skips checking if self is x if notPast == False
             else:   #calculate acceleration to another body
-                deltaX = x.x - self.x
-                deltaY = x.y - self.y
+                deltaX = i.x - self.x
+                deltaY = i.y - self.y
                 theta = abs(math.atan(deltaY / deltaX))  # still dont know if this works but i guess we'll find out
                 
                 if deltaX < 0: xDir = -1
@@ -156,7 +157,7 @@ class Mass:
 
                 r = math.sqrt(deltaX*deltaX + deltaY*deltaY)
                 # (GMm/r^2) * 1/m, m being self.mass
-                a = G * x.mass / (r*r)
+                a = GRAVTIATIONAL_CONSTANT * i.mass / (r*r)
                 
                 self.AG[0] += a * math.cos(theta) * xDir
                 self.AG[1] += a * math.sin(theta) * yDir
@@ -179,7 +180,6 @@ class Mass:
         self.vi[0] += self.deltaV[0]
         self.vi[1] += self.deltaV[1]
 
-            
 
 
 if __name__ == "__main__": 
