@@ -114,13 +114,17 @@ class Simulator:
 
     def collide(self, obj1, obj2):
         # TODO: calculate center of mass upon collision to be new center for largest obj
+        cm = [0.0, 0.0]
+        #cm = (m1x1 + m2x2)/(m1 + m2)
+        cm[0] = (obj1.mass * obj1.x + obj2.mass * obj2.x)/(obj1.mass + obj2.mass)
+        cm[1] = (obj1.mass * obj1.y + obj2.mass * obj2.y)/(obj1.mass + obj2.mass)
         # m1v1 + m2v2 = mfvf
         pSys = [(obj1.P[0] + obj2.P[0]), (obj1.P[1] + obj2.P[1])]
         # vf = (m1v1 + m2v2)/mf
         vf = [(pSys[0]/(obj1.mass + obj2.mass)), (pSys[1]/(obj1.mass + obj2.mass))]
 
         if obj1.mass < obj2.mass:
-            obj2.changeMass(obj1.mass + obj2.mass, vf)
+            obj2.afterCollision(obj1.mass + obj2.mass, vf, cm)
             self.canvas.delete(obj1.visualId)
             self.masses.pop(self.masses.index(obj1))
         else: 
@@ -215,11 +219,14 @@ class Mass:
         self.P[0] = (self.vi[0] * self.mass)
         self.P[1] = (self.vi[1] * self.mass)
     
-    def changeMass(self, new, vf:list):
+    def afterCollision(self, new, vf:list, cm:list):
 
         self.mass = new
         self.size = 125 - 100/( 1 + 0.0001 * self.mass)
         self.main.canvas.coords(self.visualId, self.x - self.size, self.y - self.size, self.x + self.size, self.y + self.size)
+
+        self.x = cm[0]
+        self.y = cm[1]
 
         self.vi = vf
         
