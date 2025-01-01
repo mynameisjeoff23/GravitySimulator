@@ -46,6 +46,7 @@ class Simulator:
         self.playButton.pack()
 
         self.play = False
+        self.addingMass = False
 
         self.root.mainloop()
     
@@ -66,6 +67,16 @@ class Simulator:
         self.popup.focus_force()
         self.massText.focus_set()
 
+    #TODO: change name of addMass and realAddMass
+    def realAddMass(self) -> None: 
+        self.addingMass = True
+        x = self.root.winfo_pointerx()
+        y = self.root.winfo_pointery()
+        self.canvas.bind("<Button1", self.mousePressed)
+        self.canvas.bind("<ButtonRelease-1>", self.mouseReleased)
+        self.tempCircle = self.canvas.create_oval(x - 25, y - 25, x + 25, y + 25)
+        self.canvas.after(16, self.updateTempCircle)
+
     def closeAddMass(self, canUsebutIDKWhatItDoes=None) -> None:# I don't know what the second argument does
                                                                 # Other than prevent an exception
         if isfloat(x := self.massText.get()) and float(x) > 0:
@@ -74,15 +85,18 @@ class Simulator:
             self.masses.append(Mass(self))
             self.updateMassCount()
             self.mass = 0
-
+            
     def updateMassCount(self) -> None:
         self.massCount = len(self.masses)
 
     def mousePressed(self, event:Event) -> None:
-        self.initial = [event.x, event.y]
+        self.initial = (event.x, event.y)
 
     def mouseReleased(self, event:Event) -> None:
-        pass
+        self.canvas.unbind("<Button1>")
+        self.canvas.unbind("<ButtonRelease-1>")
+        self.addingMass = False
+        self.closeAddMass()
 
     def playHandler(self) -> None: 
         if self.play:
@@ -95,6 +109,13 @@ class Simulator:
             self.playButton.configure(text="  ▌▌")
             self.canvas.after(16, self.updateCallback)    
             self.canvas.after(16, self.updateVisuals)  
+
+    def updateTempCircle(self) -> None:
+        x = self.root.winfo_pointerx()
+        y = self.root.winfo_pointery()
+        self.canvas.coords(self.tempCircle, x - 25, y-25, x + 25, y + 25)
+        if self.addingMass:
+            self.canvas.after(16, self.updateTempCircle)
 
     def updateCallback(self) -> None: 
         if self.play:
