@@ -128,7 +128,7 @@ class Simulator:
             self.canvas.delete(obj1.visualId)
             self.masses.pop(self.masses.index(obj1))
         else: 
-            obj1.changeMass(obj1.mass + obj2.mass, vf)
+            obj1.afterCollision(obj1.mass + obj2.mass, vf, cm)
             self.canvas.delete(obj2.visualId)
             self.masses.pop(self.masses.index(obj2))
             
@@ -174,8 +174,6 @@ class Mass:
                 r = math.sqrt(deltaX*deltaX + deltaY*deltaY)
 
                 if r < max(self.size, i.size):
-                    self.vi = [0.0, 0.0]    # TODO: handle collisions               
-                    self.AG = [0.0, 0.0]
                     self.main.collide(self, i)
                     return 1              
 
@@ -194,10 +192,6 @@ class Mass:
                 
                 self.AG[0] += a * math.cos(theta) * xDir
                 self.AG[1] += a * math.sin(theta) * yDir
-                
-        if not(int(time())%10):
-            print(f"mass: {self.mass}\ta: {self.AG[0]:.8f}, {self.AG[1]:.8f}\tv: {self.vi[0]:.8f}, {self.vi[1]:.8f}\tpos: ({self.x:.8f}, {self.y:.8f})")
-            print(f"deltaxy: ({deltaX:.8f}, {deltaY:.8f})\ttheta: {theta*180/math.pi:.8f}°\tr: {r}\tdir: ({xDir}, {yDir})")
         
         return 0
     
