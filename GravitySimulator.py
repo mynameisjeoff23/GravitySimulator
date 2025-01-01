@@ -68,7 +68,7 @@ class Simulator:
 
     def closeAddMass(self, canUsebutIDKWhatItDoes=None) -> None:# I don't know what the second argument does
                                                                 # Other than prevent an exception
-        if isfloat(x := self.massText.get()):
+        if isfloat(x := self.massText.get()) and float(x) > 0:
             self.mass = float(x)
             self.popup.destroy()
             self.masses.append(Mass(self))
@@ -77,6 +77,12 @@ class Simulator:
 
     def updateMassCount(self) -> None:
         self.massCount = len(self.masses)
+
+    def mousePressed(self, event:Event) -> None:
+        self.initial = [event.x, event.y]
+
+    def mouseReleased(self, event:Event) -> None:
+        pass
 
     def playHandler(self) -> None: 
         if self.play:
@@ -140,7 +146,8 @@ class Mass:
         y = int(main.canvas.winfo_screenheight()/2)
         self.main = main
         self.mass = main.mass 
-        self.size = 125 - 100/( 1 + 0.0001 * self.mass) # magic number TODO: change when adding zooming to be logarithmic
+        #self.size = 125 - 100/( 1 + 0.0001 * self.mass) # magic number TODO: change when adding zooming to be logarithmic
+        self.size = 10 * math.log(self.mass + 250) - 30.21461
         self.x = x + randint(50 - x, x - 50) #temporaritly random
         self.y = y + randint(50 - y, y - 50)
         print(f"x: {self.x} y: {self.y}\nsize: {self.size}\n{x}x{y}")
@@ -213,10 +220,10 @@ class Mass:
         self.P[0] = (self.vi[0] * self.mass)
         self.P[1] = (self.vi[1] * self.mass)
     
-    def afterCollision(self, new, vf:list, cm:list):
+    def afterCollision(self, new:float, vf:list, cm:list) -> None:
 
         self.mass = new
-        self.size = 125 - 100/( 1 + 0.0001 * self.mass)
+        self.size = 10 * math.log(self.mass + 250) - 30.21461
         self.main.canvas.coords(self.visualId, self.x - self.size, self.y - self.size, self.x + self.size, self.y + self.size)
 
         self.x = cm[0]
