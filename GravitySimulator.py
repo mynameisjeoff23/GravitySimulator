@@ -38,7 +38,7 @@ class Simulator:
         self.masses = []
         self.massCount = 0
 
-        #TODO: take buttons out of the canvas
+        #TODO: take buttons out of the canvas and put in frame
         self.addMassButton = Button(self.canvas, text="+", command=self.addMass)
         self.addMassButton.pack()
 
@@ -46,57 +46,75 @@ class Simulator:
         self.playButton.pack()
 
         self.play = False
-        self.addingMass = False
+        self.followMouse = False
+        self.adding = False
 
         self.root.mainloop()
     
-    def addMass(self) -> None:
+    def askMass(self) -> None:
         self.popup = Toplevel(self.canvas)
         self.popup.title("Select Mass Dimensions")
         self.popup.geometry("200x100")
         # TODO: make pupup appear at the center 
 
-        done = Button(self.popup, text="Done", command=self.closeAddMass)
+        done = Button(self.popup, text="Done", command=self.closeAskMass)
 
         self.massText = Entry(self.popup)
 
-        self.popup.bind("<Return>", self.closeAddMass)
+        self.popup.bind("<Return>", self.closeAskMass)
 
         self.massText.pack() #TODO: change the packs into grids
         done.pack()
-        self.popup.focus_force()
-        self.massText.focus_set()
+        self.popup.focus_force() # set as focus window
+        self.massText.focus_set() # make textbox ready for typing
 
-    #TODO: change name of addMass and realAddMass
-    def realAddMass(self) -> None: 
-        self.addingMass = True
-        x = self.root.winfo_pointerx()
-        y = self.root.winfo_pointery()
-        self.canvas.bind("<Button1", self.mousePressed)
-        self.canvas.bind("<ButtonRelease-1>", self.mouseReleased)
-        self.tempCircle = self.canvas.create_oval(x - 25, y - 25, x + 25, y + 25)
-        self.canvas.after(16, self.updateTempCircle)
+    def addMass(self) -> None:
+        if not(self.adding):
+            self.adding = True
+            self.followMouse = True
+            self.canvas.bind("<Button-1>", self.mousePressed)
+            self.canvas.bind("<ButtonRelease-1>", self.mouseReleased)
+            x = self.root.winfo_pointerx()
+            y = self.root.winfo_pointery()
+            self.tempCircle = self.canvas.create_oval(x - 25, y - 25, x + 25, y + 25, fill = "black")
+            self.canvas.after(16, self.updateTempCircle)
 
-    def closeAddMass(self, canUsebutIDKWhatItDoes=None) -> None:# I don't know what the second argument does
-                                                                # Other than prevent an exception
-        if isfloat(x := self.massText.get()) and float(x) > 0:
+    def closeAskMass(self, event:Event=None) -> None:
+        if isfloat(x := self.massText.get()) and (float(x) > 0): 
             self.mass = float(x)
+            r = math.sqrt(self.dxy[0]**2 + self.dxy[1]**2)
+
+            if r >= 3:
+                vi = [self.dxy[0] / -10, self.dxy[1] / -10]
+            else:
+                vi = [0.0, 0.0]
+
             self.popup.destroy()
-            self.masses.append(Mass(self))
+
+            self.masses.append(Mass(self, vi.copy()))
             self.updateMassCount()
+            self.canvas.delete(self.tempCircle)
+            self.tempCircle = None
             self.mass = 0
+            self.adding = False
+            self.initial = None
+            self.dxy = None
             
     def updateMassCount(self) -> None:
         self.massCount = len(self.masses)
 
     def mousePressed(self, event:Event) -> None:
         self.initial = (event.x, event.y)
+        self.followMouse = False
 
     def mouseReleased(self, event:Event) -> None:
-        self.canvas.unbind("<Button1>")
+        self.canvas.unbind("<Button-1>")
         self.canvas.unbind("<ButtonRelease-1>")
-        self.addingMass = False
-        self.closeAddMass()
+
+        self.dxy = (event.x - self.initial[0], event.y - self.initial[1])
+        
+        self.askMass()
+
 
     def playHandler(self) -> None: 
         if self.play:
@@ -113,8 +131,8 @@ class Simulator:
     def updateTempCircle(self) -> None:
         x = self.root.winfo_pointerx()
         y = self.root.winfo_pointery()
-        self.canvas.coords(self.tempCircle, x - 25, y-25, x + 25, y + 25)
-        if self.addingMass:
+        self.canvas.coords(self.tempCircle, x -25, y - 50, x + 25, y)
+        if self.followMouse:
             self.canvas.after(16, self.updateTempCircle)
 
     def updateCallback(self) -> None: 
@@ -140,22 +158,22 @@ class Simulator:
         #TODO: add another after(), fix after() call in updateCallBack()
 
     def collide(self, obj1, obj2):
-        # TODO: calculate center of mass upon collision to be new center for largest obj
         cm = [0.0, 0.0]
         #cm = (m1x1 + m2x2)/(m1 + m2)
-        cm[0] = (obj1.mass * obj1.x + obj2.mass * obj2.x)/(obj1.mass + obj2.mass)
-        cm[1] = (obj1.mass * obj1.y + obj2.mass * obj2.y)/(obj1.mass + obj2.mass)
+        mTot = obj1.mass + obj2.mass
+        cm[0] = (obj1.mass * obj1.x + obj2.mass * obj2.x)/(mTot)
+        cm[1] = (obj1.mass * obj1.y + obj2.mass * obj2.y)/(mTot)
         # m1v1 + m2v2 = mfvf
         pSys = [(obj1.P[0] + obj2.P[0]), (obj1.P[1] + obj2.P[1])]
         # vf = (m1v1 + m2v2)/mf
-        vf = [(pSys[0]/(obj1.mass + obj2.mass)), (pSys[1]/(obj1.mass + obj2.mass))]
+        vf = [(pSys[0]/(mTot)), (pSys[1]/(mTot))]
 
         if obj1.mass < obj2.mass:
-            obj2.afterCollision(obj1.mass + obj2.mass, vf, cm)
+            obj2.afterCollision(mTot, vf, cm)
             self.canvas.delete(obj1.visualId)
             self.masses.pop(self.masses.index(obj1))
         else: 
-            obj1.afterCollision(obj1.mass + obj2.mass, vf, cm)
+            obj1.afterCollision(mTot, vf, cm)
             self.canvas.delete(obj2.visualId)
             self.masses.pop(self.masses.index(obj2))
             
@@ -163,15 +181,14 @@ class Simulator:
 
 class Mass:
     def __init__(self, main:Simulator, vi:list=None) -> None:
-        x = int(main.canvas.winfo_screenwidth()/2) #TODO: move this shit into the simulator
-        y = int(main.canvas.winfo_screenheight()/2)
         self.main = main
         self.mass = main.mass 
         #self.size = 125 - 100/( 1 + 0.0001 * self.mass) # magic number TODO: change when adding zooming to be logarithmic
         self.size = 10 * math.log(self.mass + 250) - 30.21461
-        self.x = x + randint(50 - x, x - 50) #temporaritly random
-        self.y = y + randint(50 - y, y - 50)
-        print(f"x: {self.x} y: {self.y}\nsize: {self.size}\n{x}x{y}")
+        self.x = self.main.initial[0]
+        self.y = self.main.initial[1]
+
+        print(f"x: {self.x} y: {self.y}\nsize: {self.size}")
         self.deltaV = [0.0, 0.0]
         if vi == None:
             self.vi = [0.0, 0.0]
