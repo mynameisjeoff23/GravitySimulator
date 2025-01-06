@@ -37,6 +37,7 @@ class Simulator:
 
         self.masses = []
         self.massCount = 0
+        self.dxy = [0.0, 0.0]
 
         #TODO: take buttons out of the canvas and put in frame
         self.addMassButton = Button(self.canvas, text="+", command=self.addMass)
@@ -85,7 +86,7 @@ class Simulator:
             r = math.sqrt(self.dxy[0]**2 + self.dxy[1]**2)
 
             if r >= 3:
-                vi = [self.dxy[0] / -10, self.dxy[1] / -10]
+                vi = [self.dxy[0] / -5, self.dxy[1] / -5]
             else:
                 vi = [0.0, 0.0]
 
@@ -97,21 +98,23 @@ class Simulator:
             self.tempCircle = None
             self.mass = 0
             self.adding = False
-            self.initial = None
-            self.dxy = None
+            self.initial = (float(), float())
+            self.dxy = [float(), float()]
             
     def updateMassCount(self) -> None:
         self.massCount = len(self.masses)
 
     def mousePressed(self, event:Event) -> None:
-        self.initial = (event.x, event.y)
-        self.followMouse = False
+        if self.followMouse:
+            self.followMouse = False
+            self.initial = (event.x, event.y)
+            self.arrow = self.canvas.create_line(event.x, event.y, event.x, event.y, arrow=LAST)
+            self.canvas.after(16, self.updateViPreview)
 
     def mouseReleased(self, event:Event) -> None:
         self.canvas.unbind("<Button-1>")
         self.canvas.unbind("<ButtonRelease-1>")
-
-        self.dxy = (event.x - self.initial[0], event.y - self.initial[1])
+        self.canvas.delete(self.arrow)
         
         self.askMass()
 
@@ -126,12 +129,11 @@ class Simulator:
             self.play = True
             self.playButton.configure(text="  ▌▌")
             self.canvas.after(16, self.updateCallback)    
-            self.canvas.after(16, self.updateVisuals)  
 
     def updateTempCircle(self) -> None:
         x = self.root.winfo_pointerx()
         y = self.root.winfo_pointery()
-        self.canvas.coords(self.tempCircle, x -25, y - 50, x + 25, y)
+        self.canvas.coords(self.tempCircle, x - 25, y - 50, x + 25, y)
         if self.followMouse:
             self.canvas.after(16, self.updateTempCircle)
 
@@ -149,13 +151,26 @@ class Simulator:
             #self.lastTime = self.currentTime
             self.canvas.after(16, self.updateCallback)
 
-    def updateVisuals(self) -> None:
-        if self.play:
             for x in self.masses:
                 self.canvas.coords(x.visualId, x.x - x.size, x.y - x.size, x.x + x.size, x.y + x.size)
 
-            self.canvas.after(16, self.updateVisuals)
-        #TODO: add another after(), fix after() call in updateCallBack()
+    def updateViPreview(self):
+        if self.adding and not(self.followMouse):
+            x = self.canvas.winfo_pointerx()
+            y = self.canvas.winfo_pointery()
+            self.dxy[0] = x - self.initial[0]
+            self.dxy[1] = y - self.initial[1]
+            r = math.sqrt(self.dxy[0]**2 + self.dxy[1]**2)
+            if r >= 3:
+                self.canvas.coords(self.arrow, self.initial[0], self.initial[1],\
+                                    self.initial[0] + (self.dxy[0] / -2), \
+                                    self.initial[1] + (self.dxy[1] / -2))
+            else: 
+                self.canvas.coords(self.arrow, self.initial[0], self.initial[1], self.initial[0], self.initial[1])
+            
+            self.canvas.after(16, self.updateViPreview)
+
+
 
     def collide(self, obj1, obj2):
         cm = [0.0, 0.0]
