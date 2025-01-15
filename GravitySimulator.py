@@ -35,6 +35,7 @@ class Simulator:
         self.canvas = Canvas(self.frame)
         self.canvas.pack(fill=BOTH, expand=True)
 
+        self.scale = 1.0
         self.masses = []
         self.massCount = 0
         self.dxy = [0.0, 0.0]
@@ -56,7 +57,8 @@ class Simulator:
     def askMass(self) -> None:
         self.popup = Toplevel(self.canvas)
         self.popup.title("Select Mass Dimensions")
-        self.popup.geometry("200x100")
+        self.popup.geometry(f"200x100+{self.canvas.winfo_pointerx()}+{self.canvas.winfo_pointery()}")
+        self.popup.protocol("WM_DELETE_WINDOW", self.cancelAdding)
         # TODO: make pupup appear at the center 
 
         done = Button(self.popup, text="Done", command=self.closeAskMass)
@@ -79,18 +81,19 @@ class Simulator:
             x = self.canvas.winfo_pointerx() - self.canvas.winfo_rootx()
             y = self.canvas.winfo_pointery() - self.canvas.winfo_rooty()
             self.tempCircle = self.canvas.create_oval(x - 25, y - 25, x + 25, y + 25, fill = "black")
-            self.canvas.after(16, self.updateTempCircle)
+            self.canvas.after(15, self.updateTempCircle)
 
     def closeAskMass(self, event:Event=None) -> None:
         if isfloat(x := self.massText.get()) and (float(x) > 0): 
             self.mass = float(x)
-            print(f"({self.dxy[0] + self.initial[0]}, {self.dxy[1] + self.initial[1]})")
             r = math.sqrt(self.dxy[0]**2 + self.dxy[1]**2)
 
             if r >= 3:
                 vi = [self.dxy[0] / -5, self.dxy[1] / -5]
             else:
                 vi = [0.0, 0.0]
+
+            print(vi)
 
             self.popup.destroy()
 
@@ -111,9 +114,8 @@ class Simulator:
             self.followMouse = False
             self.updateArrow = True
             self.initial = (event.x, event.y)
-            print(self.initial)
             self.arrow = self.canvas.create_line(event.x, event.y, event.x, event.y, arrow=LAST)
-            self.canvas.after(16, self.updateViPreview)
+            self.canvas.after(15, self.updateViPreview)
 
     def mouseReleased(self, event:Event) -> None:
         self.canvas.unbind("<Button-1>")
@@ -123,6 +125,12 @@ class Simulator:
         
         self.askMass()
 
+    def cancelAdding(self):
+        self.popup.destroy()
+        self.canvas.delete(self.tempCircle)
+        self.followMouse = False
+        self.adding = False
+        self.updateArrow = False
 
     def playHandler(self) -> None: 
         if self.play:
@@ -133,28 +141,28 @@ class Simulator:
             self.lastTime = time()
             self.play = True
             self.playButton.configure(text="  ▌▌")
-            self.canvas.after(16, self.updateCallback)    
+            self.canvas.after(15, self.updateCallback)    
 
     def updateTempCircle(self) -> None:
         x = self.canvas.winfo_pointerx() - self.canvas.winfo_rootx()
         y = self.canvas.winfo_pointery() - self.canvas.winfo_rooty()
         self.canvas.coords(self.tempCircle, x - 25, y - 25, x + 25, y + 25)
         if self.followMouse:
-            self.canvas.after(16, self.updateTempCircle)
+            self.canvas.after(15, self.updateTempCircle)
 
     def updateCallback(self) -> None: 
         if self.play:
-            #self.currentTime = time()
-            #self.deltaT = (self.currentTime - self.lastTime) * timeMultiplier
-            self.deltaT = 0.01694915254237288 * timeMultiplier #TODO: uncomment when done debugging
+            self.currentTime = time()
+            self.deltaT = (self.currentTime - self.lastTime) * timeMultiplier
+            #self.deltaT = 0.01694915254237288 * timeMultiplier
             for x in self.masses:
                 if x.updateAG():
-                    self.canvas.after(16, self.updateCallback)
+                    self.canvas.after(15, self.updateCallback)
                     return
             for x in self.masses:
                 x.updatePos()
-            #self.lastTime = self.currentTime
-            self.canvas.after(16, self.updateCallback)
+            self.lastTime = self.currentTime
+            self.canvas.after(15, self.updateCallback)
 
             for x in self.masses:
                 self.canvas.coords(x.visualId, x.x - x.size, x.y - x.size, x.x + x.size, x.y + x.size)
@@ -173,7 +181,7 @@ class Simulator:
             else: 
                 self.canvas.coords(self.arrow, self.initial[0], self.initial[1], self.initial[0], self.initial[1])
             
-            self.canvas.after(16, self.updateViPreview)
+            self.canvas.after(15, self.updateViPreview)
 
 
 
@@ -234,15 +242,23 @@ class Mass:
                 notPast = False #skips calculating gravity when self is x
                 continue # also skips checking if self is x if notPast == False
             else:   #calculate acceleration to another body
-                deltaX = i.x - self.x
-                deltaY = i.y - self.y
+                deltaX = i.x - self.x + 1e-15
+                deltaY = i.y - self.y + 1e-15
+
+                #TODO:handle deltas of 0
+                if not deltaX:
+                    print("This shouldn't be possible, deltaX = 0") # actually it is, just improbable
+                    print(id(self))
+                    print(id(i))
+                    exit()
+
                 r = math.sqrt(deltaX*deltaX + deltaY*deltaY)
 
                 if r < max(self.size, i.size):
                     self.main.collide(self, i)
                     return 1              
 
-                theta = abs(math.atan(deltaY / deltaX))  # still dont know if this works but i guess we'll find out
+                theta = abs(math.atan(deltaY / deltaX))
                 
                 if deltaX < 0: xDir = -1
                 elif deltaX > 0: xDir = 1
