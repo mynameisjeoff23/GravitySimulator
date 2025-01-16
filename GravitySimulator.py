@@ -35,10 +35,16 @@ class Simulator:
         self.canvas = Canvas(self.frame)
         self.canvas.pack(fill=BOTH, expand=True)
 
+        self.canvas.bind("<Button-1>", self.mousePressed)
+        self.canvas.bind("<ButtonRelease-1>", self.mouseReleased)
+        self.canvas.bind("<Escape>", self.escapeHandler)
+
         self.scale = 1.0
         self.masses = []
         self.massCount = 0
         self.dxy = [0.0, 0.0]
+        self.xOffset = 0
+        self.yOffset = 0
 
         #TODO: take buttons out of the canvas and put in frame
         self.addMassButton = Button(self.canvas, text="+", command=self.addMass)
@@ -51,7 +57,9 @@ class Simulator:
         self.followMouse = False
         self.adding = False
         self.updateArrow = False
+        self.panning = False
 
+        self.canvas.after(15, self.updateCallback)
         self.root.mainloop()
     
     def askMass(self) -> None:
@@ -76,8 +84,6 @@ class Simulator:
         if not(self.adding):
             self.adding = True
             self.followMouse = True
-            self.canvas.bind("<Button-1>", self.mousePressed)
-            self.canvas.bind("<ButtonRelease-1>", self.mouseReleased)
             x = self.canvas.winfo_pointerx() - self.canvas.winfo_rootx()
             y = self.canvas.winfo_pointery() - self.canvas.winfo_rooty()
             self.tempCircle = self.canvas.create_oval(x - 25, y - 25, x + 25, y + 25, fill = "black")
@@ -117,13 +123,28 @@ class Simulator:
             self.arrow = self.canvas.create_line(event.x, event.y, event.x, event.y, arrow=LAST)
             self.canvas.after(15, self.updateViPreview)
 
+        if (not self.adding) and (not self.panning):
+            self.panning = True
+            self.lastX = self.canvas.winfo_pointerx() - self.canvas.winfo_rootx()
+            self.lastY = self.canvas.winfo_pointery() - self.canvas.winfo_rooty()
+            self.canvas.after(15, self.updateOffset)
+            
+
     def mouseReleased(self, event:Event) -> None:
-        self.canvas.unbind("<Button-1>")
-        self.canvas.unbind("<ButtonRelease-1>")
-        self.canvas.delete(self.arrow)
-        self.updateArrow = False
-        
-        self.askMass()
+        if self.updateArrow:
+            self.canvas.delete(self.arrow)
+            self.updateArrow = False
+            self.askMass()
+
+        if self.panning:
+            self.panning = False
+
+
+    def escapeHandler(self, event:Event) -> None:
+        print(f"adding?: {self.adding}") #TODO: doesn't work
+        if self.adding:
+            self.cancelAdding()
+
 
     def cancelAdding(self):
         self.popup.destroy()
@@ -141,7 +162,6 @@ class Simulator:
             self.lastTime = time()
             self.play = True
             self.playButton.configure(text="  ▌▌")
-            self.canvas.after(15, self.updateCallback)    
 
     def updateTempCircle(self) -> None:
         x = self.canvas.winfo_pointerx() - self.canvas.winfo_rootx()
@@ -151,6 +171,11 @@ class Simulator:
             self.canvas.after(15, self.updateTempCircle)
 
     def updateCallback(self) -> None: 
+
+        for x in self.masses:
+            self.canvas.coords(x.visualId, x.x - x.size + self.xOffset, x.y - x.size + self.yOffset,\
+                               x.x + x.size + self.xOffset, x.y + x.size + self.yOffset)
+
         if self.play:
             self.currentTime = time()
             self.deltaT = (self.currentTime - self.lastTime) * timeMultiplier
@@ -162,12 +187,12 @@ class Simulator:
             for x in self.masses:
                 x.updatePos()
             self.lastTime = self.currentTime
-            self.canvas.after(15, self.updateCallback)
+            
+        self.canvas.after(15, self.updateCallback)    
 
-            for x in self.masses:
-                self.canvas.coords(x.visualId, x.x - x.size, x.y - x.size, x.x + x.size, x.y + x.size)
 
     def updateViPreview(self):
+
         if self.adding and not(self.followMouse) and self.updateArrow:
             x = self.canvas.winfo_pointerx() - self.canvas.winfo_rootx()
             y = self.canvas.winfo_pointery() - self.canvas.winfo_rooty()
@@ -183,7 +208,15 @@ class Simulator:
             
             self.canvas.after(15, self.updateViPreview)
 
-
+    def updateOffset(self):
+        if self.panning:
+            x = self.canvas.winfo_pointerx() - self.canvas.winfo_rootx()
+            y = self.canvas.winfo_pointery() - self.canvas.winfo_rooty()
+            self.xOffset += x - self.lastX
+            self.yOffset += y - self.lastY
+            self.lastX = x  
+            self.lastY = y
+            self.canvas.after(15, self.updateOffset)
 
     def collide(self, obj1, obj2):
         cm = [0.0, 0.0]
@@ -213,8 +246,8 @@ class Mass:
         self.mass = main.mass 
         #self.size = 125 - 100/( 1 + 0.0001 * self.mass) # magic number TODO: change when adding zooming to be logarithmic
         self.size = 10 * math.log(self.mass + 250) - 30.21461
-        self.x = self.main.initial[0]
-        self.y = self.main.initial[1]
+        self.x = self.main.initial[0] - self.main.xOffset
+        self.y = self.main.initial[1] - self.main.yOffset
 
         print(f"x: {self.x} y: {self.y}\nsize: {self.size}")
         self.deltaV = [0.0, 0.0]
@@ -242,7 +275,7 @@ class Mass:
                 notPast = False #skips calculating gravity when self is x
                 continue # also skips checking if self is x if notPast == False
             else:   #calculate acceleration to another body
-                deltaX = i.x - self.x + 1e-15
+                deltaX = i.x - self.x + 1e-15   # yeah, it's off by a hair, so what
                 deltaY = i.y - self.y + 1e-15
 
                 #TODO:handle deltas of 0
