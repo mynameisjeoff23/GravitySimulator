@@ -38,6 +38,7 @@ class Simulator:
         self.canvas.bind("<Button-1>", self.mousePressed)
         self.canvas.bind("<ButtonRelease-1>", self.mouseReleased)
         self.canvas.bind("<Escape>", self.escapeHandler)
+        self.canvas.bind("<MouseWheel>", self.mouseWheelHandler)
 
         self.scale = 1.0
         self.masses = []
@@ -95,7 +96,7 @@ class Simulator:
             r = math.sqrt(self.dxy[0]**2 + self.dxy[1]**2)
 
             if r >= 3:
-                vi = [self.dxy[0] / -5, self.dxy[1] / -5]
+                vi = [self.dxy[0] / -5 / self.scale, self.dxy[1] / -5 / self.scale] 
             else:
                 vi = [0.0, 0.0]
 
@@ -145,6 +146,31 @@ class Simulator:
         if self.adding:
             self.cancelAdding()
 
+    def mouseWheelHandler(self, event:Event) -> None:
+        # screen to world before
+        x0 = event.x / self.scale - self.xOffset
+        y0 = event.y / self.scale - self.yOffset
+
+        magnitude = abs(event.delta)//120
+
+        if event.delta < 0:
+            for x in range(magnitude):
+                self.scale *= .95
+
+        elif event.delta > 0:
+            for x in range(magnitude):
+                self.scale *= 1.05
+
+        print(self.scale)
+                
+        x1 = event.x / self.scale - self.xOffset
+        y1 = event.y / self.scale - self.yOffset
+
+        self.xOffset += x1 - x0
+        self.yOffset += y1 - y0
+        
+
+
 
     def cancelAdding(self):
         self.popup.destroy()
@@ -173,8 +199,9 @@ class Simulator:
     def updateCallback(self) -> None: 
 
         for x in self.masses:
-            self.canvas.coords(x.visualId, x.x - x.size + self.xOffset, x.y - x.size + self.yOffset,\
-                               x.x + x.size + self.xOffset, x.y + x.size + self.yOffset)
+            # world to screen coordinates
+            self.canvas.coords(x.visualId, (x.x - x.size + self.xOffset) * self.scale, (x.y - x.size + self.yOffset) * self.scale,\
+                              (x.x + x.size + self.xOffset) * self.scale, (x.y + x.size + self.yOffset) * self.scale)
 
         if self.play:
             self.currentTime = time()
@@ -212,8 +239,8 @@ class Simulator:
         if self.panning:
             x = self.canvas.winfo_pointerx() - self.canvas.winfo_rootx()
             y = self.canvas.winfo_pointery() - self.canvas.winfo_rooty()
-            self.xOffset += x - self.lastX
-            self.yOffset += y - self.lastY
+            self.xOffset += (x - self.lastX) / self.scale
+            self.yOffset += (y - self.lastY) / self.scale
             self.lastX = x  
             self.lastY = y
             self.canvas.after(15, self.updateOffset)
@@ -246,8 +273,10 @@ class Mass:
         self.mass = main.mass 
         #self.size = 125 - 100/( 1 + 0.0001 * self.mass) # magic number TODO: change when adding zooming to be logarithmic
         self.size = 10 * math.log(self.mass + 250) - 30.21461
-        self.x = self.main.initial[0] - self.main.xOffset
-        self.y = self.main.initial[1] - self.main.yOffset
+
+        # screen to world coordinates
+        self.x = self.main.initial[0] / self.main.scale - self.main.xOffset
+        self.y = self.main.initial[1] / self.main.scale - self.main.yOffset
 
         print(f"x: {self.x} y: {self.y}\nsize: {self.size}")
         self.deltaV = [0.0, 0.0]
@@ -331,7 +360,6 @@ class Mass:
 
         self.mass = new
         self.size = 10 * math.log(self.mass + 250) - 30.21461
-        self.main.canvas.coords(self.visualId, self.x - self.size, self.y - self.size, self.x + self.size, self.y + self.size)
 
         self.x = cm[0]
         self.y = cm[1]
