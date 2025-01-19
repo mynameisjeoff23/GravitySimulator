@@ -62,12 +62,40 @@ class Simulator:
         self.canvas.after(15, self.updateCallback)
         self.root.mainloop()
     
-    def askMass(self) -> None:
+    def askMass(self, mouseX, mouseY) -> None:
+
+        # Get the root window's position and dimensions
+        rootX = self.canvas.winfo_x()
+        rootY = self.canvas.winfo_y()
+        rootWidth = self.canvas.winfo_width()
+        rootHeight = self.canvas.winfo_height()
+
+        cursorX = mouseX
+        cursorY = mouseY
+
+        toplevelWidth = 200
+        toplevelHeight = 100
+
+        # Calculate default Toplevel position
+        newX = cursorX
+        newY = cursorY
+
+        # Adjust if the Toplevel window would go outside the root boundaries
+        if cursorX + toplevelWidth > rootX + rootWidth:
+            newX = rootX + rootWidth - toplevelWidth
+        if cursorY + toplevelHeight > rootY + rootHeight:
+            newY = rootY + rootHeight - toplevelHeight
+
+        # Ensure Toplevel doesn't go above or to the left of the root window
+        if newX < rootX:
+            newX = rootX
+        if newY < rootY:
+            newY = rootY
+
         self.popup = Toplevel(self.canvas)
         self.popup.title("Select Mass Dimensions")
-        self.popup.geometry(f"200x100+{self.canvas.winfo_pointerx()}+{self.canvas.winfo_pointery()}")
+        self.popup.geometry(f"{toplevelWidth}x{toplevelHeight}+{newX}+{newY}")
         self.popup.protocol("WM_DELETE_WINDOW", self.cancelAdding)
-        # TODO: make pupup appear at the center 
 
         done = Button(self.popup, text="Done", command=self.closeAskMass)
 
@@ -132,7 +160,7 @@ class Simulator:
         if self.updateArrow:
             self.canvas.delete(self.arrow)
             self.updateArrow = False
-            self.askMass()
+            self.askMass(event.x, event.y)
 
         if self.panning:
             self.panning = False
@@ -266,7 +294,6 @@ class Mass:
     def __init__(self, main:Simulator, vi:list=None) -> None:
         self.main = main
         self.mass = main.mass 
-        #self.size = 125 - 100/( 1 + 0.0001 * self.mass) # magic number TODO: change when adding zooming to be logarithmic
         self.size = 10 * math.log(self.mass + 250) - 30.21461
 
         # screen to world coordinates
