@@ -29,10 +29,10 @@ class Simulator:
         self.root.state("zoomed")
         self.root.update_idletasks()
         
-        self.frame = Frame(self.root, width=self.root.winfo_screenwidth(), height=self.root.winfo_screenheight())
-        self.frame.pack(fill=BOTH, expand=True)
+        self.frame = Frame(self.root, height=50, bg="light grey")
+        self.frame.pack(side=TOP, fill="x")
 
-        self.canvas = Canvas(self.frame)
+        self.canvas = Canvas(self.root)
         self.canvas.pack(fill=BOTH, expand=True)
 
         self.canvas.bind("<Button-1>", self.mousePressed)
@@ -47,12 +47,11 @@ class Simulator:
         self.xOffset = 0
         self.yOffset = 0
 
-        #TODO: take buttons out of the canvas and put in frame
-        self.addMassButton = Button(self.canvas, text="+", command=self.addMass)
-        self.addMassButton.pack()
+        self.addMassButton = Button(self.frame, text="+", command=self.addMass, width=10, font=("Arial", 20))
+        self.addMassButton.pack(side=LEFT, padx = 5, pady=5)
 
-        self.playButton = Button(self.canvas, text='  ▶ ', command=self.playHandler)
-        self.playButton.pack()
+        self.playButton = Button(self.frame, text='  ▶ ', command=self.playHandler, width=10, font=("Arial", 20))
+        self.playButton.pack(side=LEFT, padx=5, pady=5)
 
         self.play = False
         self.followMouse = False
@@ -99,8 +98,6 @@ class Simulator:
                 vi = [self.dxy[0] / -5 / self.scale, self.dxy[1] / -5 / self.scale] 
             else:
                 vi = [0.0, 0.0]
-
-            print(vi)
 
             self.popup.destroy()
 
@@ -160,8 +157,6 @@ class Simulator:
         elif event.delta > 0:
             for x in range(magnitude):
                 self.scale *= 1.05
-
-        print(self.scale)
                 
         x1 = event.x / self.scale - self.xOffset
         y1 = event.y / self.scale - self.yOffset
@@ -278,7 +273,7 @@ class Mass:
         self.x = self.main.initial[0] / self.main.scale - self.main.xOffset
         self.y = self.main.initial[1] / self.main.scale - self.main.yOffset
 
-        print(f"x: {self.x} y: {self.y}\nsize: {self.size}")
+        #print(f"x: {self.x} y: {self.y}\nsize: {self.size}")
         self.deltaV = [0.0, 0.0]
         if vi == None:
             self.vi = [0.0, 0.0]
@@ -291,7 +286,7 @@ class Mass:
         self.visualId = self.main.canvas.create_oval(self.x - self.size, self.y - self.size, \
                                                      self.x + self.size, self.y + self.size, \
                                                      fill="black", outline="black")
-        print("should have posted a circle")
+        #print("should have posted a circle")
 
         
     def updateAG(self) -> int:
