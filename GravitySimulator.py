@@ -37,7 +37,7 @@ class Simulator:
 
         self.canvas.bind("<Button-1>", self.mousePressed)
         self.canvas.bind("<ButtonRelease-1>", self.mouseReleased)
-        self.canvas.bind("<Escape>", self.escapeHandler)
+        self.root.bind("<Escape>", self.rootEscapeHandler)
         self.canvas.bind("<MouseWheel>", self.mouseWheelHandler)
 
         self.scale = 1.0
@@ -102,8 +102,9 @@ class Simulator:
         self.massText = Entry(self.popup)
 
         self.popup.bind("<Return>", self.closeAskMass)
+        self.popup.bind("<Escape>", self.popupEscapeHandler)
 
-        self.massText.pack() #TODO: change the packs into grids
+        self.massText.pack()
         done.pack()
         self.popup.focus_force() # set as focus window
         self.massText.focus_set() # make textbox ready for typing
@@ -166,8 +167,14 @@ class Simulator:
             self.panning = False
 
 
-    def escapeHandler(self, event:Event) -> None:
-        print(f"adding?: {self.adding}") #TODO: doesn't work
+    def rootEscapeHandler(self, event:Event) -> None:
+        if self.adding:
+            self.canvas.delete(self.tempCircle)
+            self.adding = False
+            self.followMouse = False
+            self.updateArrow = False
+
+    def popupEscapeHandler(self, event:Event) -> None:
         if self.adding:
             self.cancelAdding()
 
@@ -194,7 +201,6 @@ class Simulator:
         
 
 
-
     def cancelAdding(self):
         self.popup.destroy()
         self.canvas.delete(self.tempCircle)
@@ -213,10 +219,10 @@ class Simulator:
             self.playButton.configure(text="  ▌▌")
 
     def updateTempCircle(self) -> None:
-        x = self.canvas.winfo_pointerx() - self.canvas.winfo_rootx()
-        y = self.canvas.winfo_pointery() - self.canvas.winfo_rooty()
-        self.canvas.coords(self.tempCircle, x - 25, y - 25, x + 25, y + 25)
         if self.followMouse:
+            x = self.canvas.winfo_pointerx() - self.canvas.winfo_rootx()
+            y = self.canvas.winfo_pointery() - self.canvas.winfo_rooty()
+            self.canvas.coords(self.tempCircle, x - 25, y - 25, x + 25, y + 25)
             self.canvas.after(15, self.updateTempCircle)
 
     def updateCallback(self) -> None: 
@@ -300,7 +306,6 @@ class Mass:
         self.x = self.main.initial[0] / self.main.scale - self.main.xOffset
         self.y = self.main.initial[1] / self.main.scale - self.main.yOffset
 
-        #print(f"x: {self.x} y: {self.y}\nsize: {self.size}")
         self.deltaV = [0.0, 0.0]
         if vi == None:
             self.vi = [0.0, 0.0]
@@ -313,7 +318,6 @@ class Mass:
         self.visualId = self.main.canvas.create_oval(self.x - self.size, self.y - self.size, \
                                                      self.x + self.size, self.y + self.size, \
                                                      fill="black", outline="black")
-        #print("should have posted a circle")
 
         
     def updateAG(self) -> int:
