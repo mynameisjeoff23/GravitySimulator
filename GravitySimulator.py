@@ -46,12 +46,20 @@ class Simulator:
         self.dxy = [0.0, 0.0]
         self.xOffset = 0
         self.yOffset = 0
+        self.vi = [0.0, 0.0]
+        self.screenToWorldX = self.canvas.winfo_pointerx() - self.canvas.winfo_rootx()
+        self.screenToWorldY = self.canvas.winfo_pointery() - self.canvas.winfo_rooty()
 
         self.addMassButton = Button(self.frame, text="+", command=self.addMass, width=10, font=("Arial", 20))
         self.addMassButton.pack(side=LEFT, padx = 5, pady=5)
 
         self.playButton = Button(self.frame, text='  ▶ ', command=self.playHandler, width=10, font=("Arial", 20))
         self.playButton.pack(side=LEFT, padx=5, pady=5)
+
+        self.mouseCoordStr = StringVar()
+        self.mouseCoordStr.set(f"({self.screenToWorldX}, {self.screenToWorldY})")
+        self.mouseCoordLbl = Label(self.canvas, textvariable=self.mouseCoordStr, anchor=W)
+        self.canvas.create_window(0, 0, anchor=NW, window=self.mouseCoordLbl)
 
         self.play = False
         self.followMouse = False
@@ -121,16 +129,10 @@ class Simulator:
     def closeAskMass(self, event:Event=None) -> None:
         if isfloat(x := self.massText.get()) and (float(x) > 0): 
             self.mass = float(x)
-            r = math.sqrt(self.dxy[0]**2 + self.dxy[1]**2)
-
-            if r >= 3:
-                vi = [self.dxy[0] / -5 / self.scale, self.dxy[1] / -5 / self.scale] 
-            else:
-                vi = [0.0, 0.0]
 
             self.popup.destroy()
 
-            self.masses.append(Mass(self, vi.copy()))
+            self.masses.append(Mass(self, self.vi.copy()))
             self.updateMassCount()
             self.canvas.delete(self.tempCircle)
             self.tempCircle = None
@@ -232,6 +234,24 @@ class Simulator:
             self.canvas.coords(x.visualId, (x.x - x.size + self.xOffset) * self.scale, (x.y - x.size + self.yOffset) * self.scale,\
                               (x.x + x.size + self.xOffset) * self.scale, (x.y + x.size + self.yOffset) * self.scale)
 
+        self.screenToWorldX = (self.canvas.winfo_pointerx() - self.canvas.winfo_rootx()) / self.scale - self.xOffset 
+        self.screenToWorldY = (self.canvas.winfo_pointery() - self.canvas.winfo_rooty()) / self.scale - self.yOffset 
+
+        if self.adding:       
+            r = math.sqrt(self.dxy[0]**2 + self.dxy[1]**2)
+
+            if r >= 3:
+                self.vi[0] = self.dxy[0] / -5 / self.scale
+                self.vi[1] = self.dxy[1] / -5 / self.scale
+            else:
+                self.vi = [0.0, 0.0]
+
+            self.mouseCoordStr.set(f"({self.screenToWorldX:.0f}, {self.screenToWorldY:.0f})\nv: {math.sqrt(self.vi[0]**2 + self.vi[1]**2):.2f}")
+            
+        else:
+            self.mouseCoordStr.set(f"({self.screenToWorldX:.0f}, {self.screenToWorldY:.0f})")
+
+
         if self.play:
             self.currentTime = time()
             self.deltaT = (self.currentTime - self.lastTime) * timeMultiplier
@@ -314,7 +334,6 @@ class Mass:
         self.P = [(self.vi[0] * self.mass), (self.vi[1] * self.mass)] # momentum as (Px, Py)
         self.AG = [0.0, 0.0] # Acceleration due to gravity in (AGx, AGy) format
 
-        # graphical stuff
         self.visualId = self.main.canvas.create_oval(self.x - self.size, self.y - self.size, \
                                                      self.x + self.size, self.y + self.size, \
                                                      fill="black", outline="black")
