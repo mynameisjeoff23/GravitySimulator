@@ -175,6 +175,7 @@ class Simulator:
     def rootEscapeHandler(self, event:Event) -> None:
         if self.adding:
             self.canvas.delete(self.tempCircle)
+            self.canvas.delete(self.arrow)
             self.adding = False
             self.followMouse = False
             self.updateArrow = False
