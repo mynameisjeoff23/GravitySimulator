@@ -56,6 +56,9 @@ class Simulator:
         self.playButton = Button(self.frame, text='  ▶ ', command=self.playHandler, width=10, font=("Arial", 20))
         self.playButton.pack(side=LEFT, padx=5, pady=5)
 
+        self.clearButton = Button(self.frame, text='    🗑️', command=self.clearHandler, width=10, font=("Arial", 20))
+        self.clearButton.pack(side=LEFT, padx=5, pady=5)
+
         self.mouseCoordStr = StringVar()
         self.mouseCoordStr.set(f"({self.screenToWorldX}, {self.screenToWorldY})")
         self.mouseCoordLbl = Label(self.canvas, textvariable=self.mouseCoordStr, anchor=W)
@@ -313,6 +316,17 @@ class Simulator:
             obj1.afterCollision(mTot, vf, cm)
             self.canvas.delete(obj2.visualId)
             self.masses.pop(self.masses.index(obj2))
+
+    def clearHandler(self):
+
+        if self.massCount:
+            for x in self.masses:
+                self.canvas.delete(x.visualId)
+
+            self.masses.clear()
+            self.updateMassCount()
+            self.play = True
+            self.playHandler()
             
 
 
