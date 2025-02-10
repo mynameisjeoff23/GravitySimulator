@@ -9,7 +9,6 @@ try: ctypes.windll.shcore.SetProcessDpiAwareness(1)
 except: print("there was an exception trying to set dpi awareness")
 
 G_CONST = 6.674215e-11
-timeMultiplier = 1
 
 def isfloat(num) -> bool:
     try:
@@ -41,12 +40,15 @@ class Simulator:
         self.canvas.bind("<MouseWheel>", self.mouseWheelHandler)
 
         self.scale = 1.0
+        self.timeScale = 1.0
         self.masses = []
         self.massCount = 0
         self.dxy = [0.0, 0.0]
         self.xOffset = 0
         self.yOffset = 0
         self.vi = [0.0, 0.0]
+        self.iterations = range(1)
+        self.deltaT = 0.0
         self.screenToWorldX = self.canvas.winfo_pointerx() - self.canvas.winfo_rootx()
         self.screenToWorldY = self.canvas.winfo_pointery() - self.canvas.winfo_rooty()
 
@@ -59,10 +61,19 @@ class Simulator:
         self.clearButton = Button(self.frame, text='    🗑️', command=self.clearHandler, width=10, font=("Arial", 20))
         self.clearButton.pack(side=LEFT, padx=5, pady=5)
 
+        self.timeSlider = Scale(self.frame, from_=1, to=47, showvalue=0, width=25, length=200, orient=HORIZONTAL, command=self.timeHandler, resolution=1)
+        self.timeSlider.set(10)
+        self.timeSlider.pack(side=LEFT, padx=5, pady=5)
+        self.timeStr = StringVar()
+        self.timeStr.set("Time: 1.0x")
+        self.timeLbl = Label(self.frame, textvariable=self.timeStr, font=("Arial", 20))
+        self.timeLbl.pack(side=LEFT, pady=5)
+
         self.mouseCoordStr = StringVar()
         self.mouseCoordStr.set(f"({self.screenToWorldX}, {self.screenToWorldY})")
         self.mouseCoordLbl = Label(self.canvas, textvariable=self.mouseCoordStr, anchor=W)
         self.canvas.create_window(0, 0, anchor=NW, window=self.mouseCoordLbl)
+
 
         self.play = False
         self.followMouse = False
@@ -70,6 +81,7 @@ class Simulator:
         self.updateArrow = False
         self.panning = False
 
+        self.lastTime = time()
         self.canvas.after(15, self.updateCallback)
         self.root.mainloop()
     
@@ -204,8 +216,26 @@ class Simulator:
 
         self.xOffset += x1 - x0
         self.yOffset += y1 - y0
-        
 
+    def timeHandler(self, timeScale):
+        x = int(timeScale)
+
+        # scaleTotal = timeScale * iterations 
+        if x < 11:
+            self.iterations = range(1)
+            self.timeScale = x * .1
+        elif x < 21:
+            self.iterations = range(2)
+            self.timeScale = x * .05
+        elif x < 30:
+            self.iterations = range(x - 18)
+            self.timeScale = 1.0
+        else:
+            self.iterations = range(5 * x - 135)
+            self.timeScale = 1.0
+
+        self.timeStr.set(f"Time: {self.timeScale * (self.iterations[-1] + 1):.1f}x")
+    
 
     def cancelAdding(self):
         self.popup.destroy()
@@ -258,15 +288,16 @@ class Simulator:
 
         if self.play:
             self.currentTime = time()
-            self.deltaT = (self.currentTime - self.lastTime) * timeMultiplier
-            #self.deltaT = 0.01694915254237288 * timeMultiplier
-            for x in self.masses:
-                if x.updateAG():
-                    self.canvas.after(15, self.updateCallback)
-                    return
-            for x in self.masses:
-                x.updatePos()
-            self.lastTime = self.currentTime
+            self.deltaT = (self.currentTime - self.lastTime) * self.timeScale
+            #self.deltaT = 0.01694915254237288 * self.timeScale
+            for x in self.iterations:
+                for x in self.masses:
+                    if x.updateAG():
+                        self.canvas.after(15, self.updateCallback)
+                        return
+                for x in self.masses:
+                    x.updatePos()
+                self.lastTime = self.currentTime
             
         self.canvas.after(15, self.updateCallback)    
 
@@ -326,10 +357,15 @@ class Simulator:
 
             self.masses.clear()
             self.updateMassCount()
+            self.xOffset = 0.0
+            self.yOffset = 0.0
+            self.scale = 1.0
+            self.timeScale = 1.0
+            self.timeStr.set("Time: 1.0x")
+            self.timeSlider.set(10)
             self.play = True
             self.playHandler()
             
-
 
 class Mass:
     def __init__(self, main:Simulator, vi:list=None) -> None:
