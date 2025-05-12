@@ -44,8 +44,8 @@ class Simulator:
         self.masses = []
         self.massCount = 0
         self.dxy = [0.0, 0.0]
-        self.xOffset = 0
-        self.yOffset = 0
+        self.xOffset = 0.0
+        self.yOffset = 0.0
         self.vi = [0.0, 0.0]
         self.iterations = range(1)
         self.deltaT = 0.0
@@ -159,7 +159,7 @@ class Simulator:
             self.updateMassCount()
             self.canvas.delete(self.tempCircle)
             self.tempCircle = None
-            self.mass = 0
+            self.mass = 0.0
             self.adding = False
             self.initial = (float(), float())
             self.dxy = [float(), float()]
