@@ -74,15 +74,23 @@ class Simulator:
         self.mouseCoordLbl = Label(self.canvas, textvariable=self.mouseCoordStr, anchor=W)
         self.canvas.create_window(0, 0, anchor=NW, window=self.mouseCoordLbl)
 
+        self.framesTime = time()
+        self.frames = 0
+        self.framesStr = StringVar()
+        self.framesStr.set("FPS: 0")
+        self.framesLbl = Label(self.canvas, textvariable=self.framesStr, anchor=W)
+        self.canvas.create_window(100, 0, anchor=NW, window=self.framesLbl)
 
         self.play = False
         self.followMouse = False
         self.adding = False
         self.updateArrow = False
         self.panning = False
+        
 
         self.lastTime = time()
         self.canvas.after(15, self.updateCallback)
+        self.canvas.after(1000, self.framesCallback)
         self.root.mainloop()
     
     def askMass(self, mouseX, mouseY) -> None:
@@ -299,6 +307,7 @@ class Simulator:
                     x.updatePos()
                 self.lastTime = self.currentTime
             
+        self.frames += 1
         self.canvas.after(15, self.updateCallback)    
 
 
@@ -365,6 +374,14 @@ class Simulator:
             self.timeSlider.set(10)
             self.play = True
             self.playHandler()
+
+    def framesCallback(self):
+        currentTime = time()
+        deltaTime = currentTime - self.framesTime
+        self.framesStr.set(f"FPS: {self.frames/deltaTime:.1f}")
+        self.frames = 0
+        self.framesTime = currentTime
+        self.canvas.after(1000, self.framesCallback)
             
 
 class Mass:
