@@ -1,6 +1,5 @@
 from tkinter import *
 from time import time
-from random import randint
 import math
 import ctypes
 
@@ -171,7 +170,7 @@ class Simulator:
         if self.followMouse:
             self.followMouse = False
             self.updateArrow = True
-            self.initial = (event.x, event.y)
+            self.initial = (float(event.x), float(event.y))
             self.arrow = self.canvas.create_line(event.x, event.y, event.x, event.y, arrow=LAST)
             self.canvas.after(15, self.updateViPreview)
 
@@ -366,14 +365,15 @@ class Simulator:
 
             self.masses.clear()
             self.updateMassCount()
-            self.xOffset = 0.0
-            self.yOffset = 0.0
-            self.scale = 1.0
-            self.timeScale = 1.0
-            self.timeStr.set("Time: 1.0x")
-            self.timeSlider.set(10)
-            self.play = True
-            self.playHandler()
+            
+        self.xOffset = 0.0
+        self.yOffset = 0.0
+        self.scale = 1.0
+        self.timeScale = 1.0
+        self.timeStr.set("Time: 1.0x")
+        self.timeSlider.set(10)
+        self.play = True
+        self.playHandler()
 
     def framesCallback(self):
         currentTime = time()
