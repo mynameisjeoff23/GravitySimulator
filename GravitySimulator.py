@@ -416,16 +416,17 @@ class Mass:
             if notPast and self is i: #made confusing for short circuit
                 notPast = False #skips calculating gravity when self is x
                 continue # also skips checking if self is x if notPast == False
+            
             else:   #calculate acceleration to another body
                 deltaX = i.x - self.x + 1e-15   # yeah, it's off by a hair, so what
                 deltaY = i.y - self.y + 1e-15
 
-                #TODO:handle deltas of 0
+                #TODO:handle division by zero before it happens
                 if not deltaX:
                     print("This shouldn't be possible, deltaX = 0") # actually it is, just improbable
                     print(id(self))
                     print(id(i))
-                    exit()
+                    exit() #no you dont get to continue
 
                 r = math.sqrt(deltaX*deltaX + deltaY*deltaY)
 
