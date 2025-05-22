@@ -19,3 +19,17 @@ class Mass:
         self.visualId = canvas.create_oval(self.x - self.size, self.y - self.size, \
                                                      self.x + self.size, self.y + self.size, \
                                                      fill="black", outline="black")
+        
+    def afterCollision(self, new:float, vf:list[float], cm:list[float]):
+        
+        self.mass = new
+        self.size = 10 * log(self.mass + 250) - 30.21461
+
+        self.x = cm[0]
+        self.y = cm[1]
+
+        self.vi = vf
+
+if __name__ == "__main__":
+    print("Use GravitySimulator.py to run the simulation")
+    input("Press Enter to exit")        
