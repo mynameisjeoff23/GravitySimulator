@@ -1,9 +1,9 @@
-from tkinter import Canvas as Canvas
+from tkinter import Canvas
 from math import log
 class Mass:
     
     def __init__(self, initialXY:tuple[float, float], vi:list[float], scale:float, xOffset:float, yOffset:float, \
-                 canvas:Canvas, deltaT:float, mass:float):
+                 canvas:Canvas, mass:float):
         
         self.mass = mass
         self.size = 10 * log(self.mass + 250) - 30.21461

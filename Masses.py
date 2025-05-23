@@ -11,34 +11,37 @@ class Masses:
         self.masses = list[Mass]()
         self.canvas = canvas
         
-    def addMass(self, mass:Mass):
+    def addMass(self, initialXY:tuple[float, float], vi:list[float], scale:float, \
+                xOffset:float, yOffset:float, mass:float):
         
-        self.masses.append(mass)
-        if len(self.masses) > 1:
-            self.massArr =      np.append(self.massArr, mass.mass)
-            self.sizes =        np.append(self.sizes, mass.size)
-            self.positions =    np.append(self.positions, [[mass.x, mass.y]], axis=0)
-            self.deltaV =       np.append(self.deltaV, [mass.deltaV], axis=0)
-            self.P =            np.append(self.P, [mass.P], axis=0)
-            self.AG =           np.append(self.AG, [mass.AG], axis=0)
+        m = Mass(initialXY, vi, scale, xOffset, yOffset, self.canvas, mass)
+        self.masses.append(m)
+        if len(self.masses) > 0:
+
+            self.massArr =      np.append(self.massArr, m.mass)
+            self.sizes =        np.append(self.sizes, m.size)
+            self.positions =    np.append(self.positions, [[m.x, m.y]], axis=0)
+            self.vi =           np.append(self.vi, [m.vi], axis=0)
+            self.P =            np.append(self.P, [m.P], axis=0)
+            self.AG =           np.append(self.AG, [m.AG], axis=0)
         
         else:
+
             self.massArr =      np.array([x.mass for x in self.masses])
             self.sizes =        np.array([x.size for x in self.masses]) 
             self.positions =    np.array([[x.x, x.y] for x in self.masses])
-            self.deltaV =       np.array([x.deltaV for x in self.masses])
+            self.vi =           np.array([x.vi for x in self.masses])
             self.P =            np.array([x.P for x in self.masses])
             self.AG =           np.array([x.AG for x in self.masses])
         
-    def removeMass(self, index):
-        # unused to this day
+    def removeMass(self, index:int):
+
         self.masses.pop(index)
 
-        # and undeveloped, too
         self.massArr = np.array([x.mass for x in self.masses])
         self.sizes = np.array([x.size for x in self.masses]) 
         self.positions = np.array([[x.x, x.y] for x in self.masses])
-        self.deltaV = np.array([x.deltaV for x in self.masses])
+        self.vi = np.array([x.vi for x in self.masses])
         self.P = np.array([x.P for x in self.masses])
         self.AG = np.array([x.AG for x in self.masses])
 
@@ -47,51 +50,57 @@ class Masses:
 
         del self.massArr    
         del self.positions  
-        del self.deltaV     
+        del self.vi     
         del self.P          
         del self.AG         
 
-    def updateAG(self):
+    def updatePos(self, deltaT:float, iterations:int):
         #self.AG.fill(0.0) # probably don't need to do this
-        for i in range(len(self.masses)):
+        for x in range(iterations):
+            for i in range(len(self.masses)):
 
-            diff = self.positions - self.positions[i]
-            dist = np.sqrt(np.sum(diff**2, axis=-1))
-            diff[i] = [1.0, 1.0]    # prevents division by zero and
-            dist[i] = 1.0           # results to index i
-                                    # will be discarded later on
+                diff = self.positions - self.positions[i]
+                dist = np.sqrt(np.sum(diff**2, axis=-1))
+                diff[i] = [1.0, 1.0]    # prevents division by zero and
+                dist[i] = 1.0           # results to index i
+                                        # will be discarded later on
 
-            maxSize = np.maximum(self.sizes[i], self.sizes)
-    
-            collide = np.where(dist < maxSize, 1, 0)
-            collide[i] = 0 # prevents collision with itself
+                maxSize = np.maximum(self.sizes[i], self.sizes)
+        
+                collide = np.where(dist < maxSize, 1, 0)
+                collide[i] = 0 # prevents collision with itself
 
-            if 1 in collide: 
+                if 1 in collide: 
 
-                # find index of first element it collides with
-                # other collisions can be dealt with in another iteration
-                index = collide.view(np.True_).argmax() // collide.itemsize                                           
+                    # find index of first element it collides with
+                    # other collisions can be dealt with in another iteration
+                    index = collide.view(np.True_).argmax() // collide.itemsize                                           
 
-                if index == i: 
-                    print("you suck lmao") # should not be possible (see lines 66 and 69)
-                    exit()
+                    if index == i: 
+                        print("you suck lmao") # should not be possible (see line 71)
+                        exit()
 
-                self.collide(int(index), i)
-                self.AG.fill(0) # discard this round of gravity calculations
-                break
+                    self.collide(int(index), i)
+                    self.AG.fill(0) # discard this round of gravity calculations
+                    break
 
-            theta = np.abs(np.arctan(diff[ : , 1]/diff[ : , 0])) # might raise division by zero warning #TODO: remove comment
+                theta = np.abs(np.arctan(diff[ : , 1]/diff[ : , 0])) # might raise division by zero warning #TODO: remove comment
 
-            direction = np.where(diff < 0, -1, 1)
-            
-            aMagnitude = Masses.G_CONST * self.massArr / (dist**2)
-            aMagnitude[i] = 0.0 # now have acceleration to every other mass but not to itself
+                direction = np.where(diff < 0, -1, 1)
+                
+                aMagnitude = Masses.G_CONST * self.massArr / (dist**2)
+                aMagnitude[i] = 0.0 # now have acceleration to every other mass but not to itself
 
-            aVector = np.zeros((len(aMagnitude), 2))
-            aVector[:, 0] = aMagnitude * np.cos(theta) * direction[:, 0] # (a * cos(theta) * xdir) = ax
-            aVector[:, 1] = aMagnitude * np.sin(theta) * direction[:, 1] # (a * sin(theta) * ydir) = ay
+                aVector = np.zeros((len(aMagnitude), 2))
+                aVector[:, 0] = aMagnitude * np.cos(theta) * direction[:, 0] # (a * cos(theta) * xdir) = ax
+                aVector[:, 1] = aMagnitude * np.sin(theta) * direction[:, 1] # (a * sin(theta) * ydir) = ay
 
-            self.AG[i] = np.sum(aVector, axis=0)
+                self.AG[i] = np.sum(aVector, axis=0)
+
+            deltaV = self.AG * deltaT
+            self.positions += (self.vi * deltaT) + (0.5 * deltaV * deltaT)
+            self.vi += deltaV
+            self.P = self.vi * self.massArr
 
     def collide(self, idx1:int, idx2:int):
 
@@ -100,6 +109,7 @@ class Masses:
         mass2 = self.massArr[idx2]
 
         #cm = (m1x1 + m2x2)/(m1 + m2)
+        #TODO: can probably be numpyified, low priority
         mTot = mass1 + mass2
         cm[0] = (mass1 * self.positions[idx1][0] + mass2 * self.positions[idx2][0])/(mTot)
         cm[1] = (mass1 * self.positions[idx1][1] + mass2 * self.positions[idx2][1])/(mTot)
