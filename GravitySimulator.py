@@ -2,6 +2,7 @@ from tkinter import *
 from time import time
 import math
 import ctypes
+from Masses import Masses
 
 try: ctypes.windll.shcore.SetProcessDpiAwareness(1)
 
@@ -40,13 +41,13 @@ class Simulator:
 
         self.scale = 1.0
         self.timeScale = 1.0
-        self.masses = []
+        self.masses = Masses(self.canvas)
         self.massCount = 0
         self.dxy = [0.0, 0.0]
         self.xOffset = 0.0
         self.yOffset = 0.0
         self.vi = [0.0, 0.0]
-        self.iterations = range(1)
+        self.iterations = 1 #TODO: fix this abomination
         self.deltaT = 0.0
         self.screenToWorldX = self.canvas.winfo_pointerx() - self.canvas.winfo_rootx()
         self.screenToWorldY = self.canvas.winfo_pointery() - self.canvas.winfo_rooty()
@@ -60,7 +61,8 @@ class Simulator:
         self.clearButton = Button(self.frame, text='    🗑️', command=self.clearHandler, width=10, font=("Arial", 20))
         self.clearButton.pack(side=LEFT, padx=5, pady=5)
 
-        self.timeSlider = Scale(self.frame, from_=1, to=47, showvalue=0, width=25, length=200, orient=HORIZONTAL, command=self.timeHandler, resolution=1)
+        self.timeSlider = Scale(self.frame, from_=1, to=47, showvalue=0, width=25, length=200,\
+                                orient=HORIZONTAL, command=self.timeHandler, resolution=1)
         self.timeSlider.set(10)
         self.timeSlider.pack(side=LEFT, padx=5, pady=5)
         self.timeStr = StringVar()
@@ -71,15 +73,15 @@ class Simulator:
         self.mouseCoordStr = StringVar()
         self.mouseCoordStr.set(f"({self.screenToWorldX}, {self.screenToWorldY})")
         self.mouseCoordLbl = Label(self.canvas, textvariable=self.mouseCoordStr, anchor=W)
-        self.canvas.create_window(0, 0, anchor=NW, window=self.mouseCoordLbl)
-
+        
         self.framesTime = time()
         self.frames = 0
         self.framesStr = StringVar()
         self.framesStr.set("FPS: 0")
         self.framesLbl = Label(self.canvas, textvariable=self.framesStr, anchor=W)
-        self.canvas.create_window(100, 0, anchor=NW, window=self.framesLbl)
 
+        self.showStats()
+        
         self.play = False
         self.followMouse = False
         self.adding = False
@@ -149,22 +151,28 @@ class Simulator:
             self.canvas.after(15, self.updateTempCircle)
 
     def closeAskMass(self, event:Event=None) -> None:
-        if isfloat(x := self.massText.get()) and (float(x) > 0): 
+        x = self.massText.get()
+        if isfloat(x) and (float(x) > 0): 
             self.mass = float(x)
 
             self.popup.destroy()
 
-            self.masses.append(Mass(self, self.vi.copy()))
+            self.masses.addMass(self.initial, self.vi, self.scale, self.xOffset, self.yOffset, self.mass)
             self.updateMassCount()
             self.canvas.delete(self.tempCircle)
             self.tempCircle = None
             self.mass = 0.0
             self.adding = False
-            self.initial = (float(), float())
-            self.dxy = [float(), float()]
+            self.initial = (0.0, 0.0)
+            self.dxy = [0.0, 0.0]
             
     def updateMassCount(self) -> None:
-        self.massCount = len(self.masses)
+        self.massCount = len(self.masses.masses)
+
+    def showStats(self):
+
+        self.canvas.create_window(0, 0, anchor=NW, window=self.mouseCoordLbl)
+        self.canvas.create_window(100, 0, anchor=NW, window=self.framesLbl)
 
     def mousePressed(self, event:Event) -> None:
         if self.followMouse:
@@ -229,21 +237,21 @@ class Simulator:
 
         # scaleTotal = timeScale * iterations 
         if x < 11:
-            self.iterations = range(1)
+            self.iterations = 1 #TODO part 2: deal with this abomination
             self.timeScale = x * .1
         elif x < 21:
-            self.iterations = range(2)
+            self.iterations = 2
             self.timeScale = x * .05
         elif x < 30:
-            self.iterations = range(x - 18)
+            self.iterations = x - 18
             self.timeScale = 1.0
         else:
-            self.iterations = range(5 * x - 135)
+            self.iterations = 5 * x - 135
             self.timeScale = 1.0
 
-        self.timeStr.set(f"Time: {self.timeScale * (self.iterations[-1] + 1):.1f}x")
+        realTime = self.timeScale * self.iterations
+        self.timeStr.set(f"Time: {realTime:.1f}x")
     
-
     def cancelAdding(self):
         self.popup.destroy()
         self.canvas.delete(self.tempCircle)
@@ -270,10 +278,20 @@ class Simulator:
 
     def updateCallback(self) -> None: 
 
-        for x in self.masses:
-            # world to screen coordinates
-            self.canvas.coords(x.visualId, (x.x - x.size + self.xOffset) * self.scale, (x.y - x.size + self.yOffset) * self.scale,\
-                              (x.x + x.size + self.xOffset) * self.scale, (x.y + x.size + self.yOffset) * self.scale)
+        self.updateMassCount()
+        if self.massCount:
+            for i in range(self.massCount):
+                
+                x = self.masses.positions[i][0]
+                y = self.masses.positions[i][1]
+                size = self.masses.sizes[i]
+
+                # world to screen coordinates
+                self.canvas.coords  (self.masses.masses[i].visualId,\
+                                    (x - size + self.xOffset) * self.scale,\
+                                    (y - size + self.yOffset) * self.scale,\
+                                    (x + size + self.xOffset) * self.scale,\
+                                    (y + size + self.yOffset) * self.scale)
 
         self.screenToWorldX = (self.canvas.winfo_pointerx() - self.canvas.winfo_rootx()) / self.scale - self.xOffset 
         self.screenToWorldY = (self.canvas.winfo_pointery() - self.canvas.winfo_rooty()) / self.scale - self.yOffset 
@@ -287,7 +305,8 @@ class Simulator:
             else:
                 self.vi = [0.0, 0.0]
 
-            self.mouseCoordStr.set(f"({self.screenToWorldX:.0f}, {self.screenToWorldY:.0f})\nv: {math.sqrt(self.vi[0]**2 + self.vi[1]**2):.2f}")
+            self.mouseCoordStr.set(f"({self.screenToWorldX:.0f}, {self.screenToWorldY:.0f})\n\
+                                    v: {math.sqrt(self.vi[0]**2 + self.vi[1]**2):.2f}")
             
         else:
             self.mouseCoordStr.set(f"({self.screenToWorldX:.0f}, {self.screenToWorldY:.0f})")
@@ -296,15 +315,11 @@ class Simulator:
         if self.play:
             self.currentTime = time()
             self.deltaT = (self.currentTime - self.lastTime) * self.timeScale
+
             #self.deltaT = 0.01694915254237288 * self.timeScale
-            for x in self.iterations:
-                for x in self.masses:
-                    if x.updateAG():
-                        self.canvas.after(15, self.updateCallback)
-                        return
-                for x in self.masses:
-                    x.updatePos()
-                self.lastTime = self.currentTime
+            self.masses.updatePos(self.deltaT, self.iterations)
+            
+            self.lastTime = self.currentTime
             
         self.frames += 1
         self.canvas.after(15, self.updateCallback)    
@@ -337,7 +352,8 @@ class Simulator:
             self.lastY = y
             self.canvas.after(15, self.updateOffset)
 
-    def collide(self, obj1, obj2):
+    # TODO: this is probably not necessary anymore
+    """def collide(self, obj1, obj2):
         cm = [0.0, 0.0]
         #cm = (m1x1 + m2x2)/(m1 + m2)
         mTot = obj1.mass + obj2.mass
@@ -355,13 +371,11 @@ class Simulator:
         else: 
             obj1.afterCollision(mTot, vf, cm)
             self.canvas.delete(obj2.visualId)
-            self.masses.pop(self.masses.index(obj2))
+            self.masses.pop(self.masses.index(obj2))"""
 
     def clearHandler(self):
 
         if self.massCount:
-            for x in self.masses:
-                self.canvas.delete(x.visualId)
 
             self.masses.clear()
             self.updateMassCount()
@@ -375,6 +389,9 @@ class Simulator:
         self.play = True
         self.playHandler()
 
+        #canvas.delete("all") deletes the stats too
+        self.showStats()
+
     def framesCallback(self):
         currentTime = time()
         deltaTime = currentTime - self.framesTime
@@ -383,7 +400,7 @@ class Simulator:
         self.framesTime = currentTime
         self.canvas.after(1000, self.framesCallback)
             
-
+#TODO: this should no longer be necessary
 class Mass:
     def __init__(self, main:Simulator, vi:list=None) -> None:
         self.main = main
